@@ -1,33 +1,33 @@
 // Based on https://github.com/shramov/leaflet-plugins
 // GridLayer like https://avinmathew.com/leaflet-and-google-maps/ , but using MutationObserver instead of jQuery
-const GoogleMapsLoader = require("google-maps");
+var GoogleMapsLoader = require('google-maps');
 
-GoogleMapsLoader.VERSION = "3.18";
+GoogleMapsLoader.VERSION = '3.18';
 
 // 🍂class GridLayer.GoogleMutant
 // 🍂extends GridLayer
 L.GridLayer.GoogleMutant = L.GridLayer.extend({
-  includes: L.Mixin.Events,
+  includes: L.Evented,
 
   options: {
     minZoom: 0,
     maxZoom: 18,
     tileSize: 256,
-    subdomains: "abc",
-    errorTileUrl: "",
-    attribution: "", // The mutant container will add its own attribution anyways.
+    subdomains: 'abc',
+    errorTileUrl: '',
+    attribution: '', // The mutant container will add its own attribution anyways.
     opacity: 1,
     continuousWorld: false,
     noWrap: false,
     // 🍂option type: String = 'roadmap'
     // Google's map type. Valid values are 'roadmap', 'satellite' or 'terrain'. 'hybrid' is not really supported.
-    type: "satellite",
-    maxNativeZoom: 21,
+    type: 'satellite',
+    maxNativeZoom: 21
   },
 
-  initialize(options) {
+  initialize: function (options) {
     L.GridLayer.prototype.initialize.call(this, options);
-    const self = this;
+    var self = this;
 
     if (options.asclientid) {
       GoogleMapsLoader.CLIENT = options.googlekey;
@@ -35,32 +35,38 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
       GoogleMapsLoader.KEY = options.googlekey;
     }
 
+    GoogleMapsLoader.LIBRARIES = options.libraries || [];
 
-    self._type = options.maptype || "SATELLITE";
+    self._type = options.maptype || 'SATELLITE';
 
-    GoogleMapsLoader.load((_google) => {
+    GoogleMapsLoader.load(function (_google) {
       google = _google;
-      console.log("I just loaded google maps api");
       self._ready = true;
-      // self._initMapObject();
+      //self._initMapObject();
       // self.
       self._initMutant();
       self._update();
 
-      // this._ready = google.maps.Map !== undefined;
-      // if (!this._ready) L.Google.asyncWait.push(this);
+      if (options.onAfterLoad) {
+        options.onAfterLoad(google);
+      }
+
+      //this._ready = google.maps.Map !== undefined;
+      //if (!this._ready) L.Google.asyncWait.push(this);
     });
+
+
 
 
     // Couple data structures indexed by tile key
     this._tileCallbacks = {}; // Callbacks for promises for tiles that are expected
     this._freshTiles = {}; // Tiles from the mutant which haven't been requested yet
 
-    this._imagesPerTile = (self._type === "hybrid") ? 2 : 1;
-    this.createTile = (self._type === "hybrid") ? this._createMultiTile : this._createSingleTile;
+    this._imagesPerTile = (self._type === 'hybrid') ? 2 : 1;
+    this.createTile = (self._type === 'hybrid') ? this._createMultiTile : this._createSingleTile;
   },
 
-  onAdd(map) {
+  onAdd: function (map) {
     L.GridLayer.prototype.onAdd.call(this, map);
     this._initMutantContainer();
 
@@ -70,55 +76,55 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 
       this._initMutant();
 
-      map.on("viewreset", this._reset, this);
-      map.on("move", this._update, this);
-      map.on("zoomend", this._handleZoomAnim, this);
-      map.on("resize", this._resize, this);
+      map.on('viewreset', this._reset, this);
+      map.on('move', this._update, this);
+      map.on('zoomend', this._handleZoomAnim, this);
+      map.on('resize', this._resize, this);
 
-      // 20px instead of 1em to avoid a slight overlap with google's attribution
-      map._controlCorners.bottomright.style.marginBottom = "20px";
+      //20px instead of 1em to avoid a slight overlap with google's attribution
+      map._controlCorners.bottomright.style.marginBottom = '20px';
 
       this._reset();
       this._update();
     }
-    // }.bind(this));
+    //}.bind(this));
   },
 
-  onRemove(map) {
+  onRemove: function (map) {
     L.GridLayer.prototype.onRemove.call(this, map);
     map._container.removeChild(this._mutantContainer);
     this._mutantContainer = undefined;
 
-    map.off("viewreset", this._reset, this);
-    map.off("move", this._update, this);
-    map.off("zoomend", this._handleZoomAnim, this);
-    map.off("resize", this._resize, this);
+    map.off('viewreset', this._reset, this);
+    map.off('move', this._update, this);
+    map.off('zoomend', this._handleZoomAnim, this);
+    map.off('resize', this._resize, this);
 
-    map._controlCorners.bottomright.style.marginBottom = "0em";
+    if (map._controlCorners) map._controlCorners.bottomright.style.marginBottom = '0em';
   },
 
-  getAttribution() {
+  getAttribution: function () {
     return this.options.attribution;
   },
 
-  setOpacity(opacity) {
+  setOpacity: function (opacity) {
     this.options.opacity = opacity;
     if (opacity < 1) {
       L.DomUtil.setOpacity(this._mutantContainer, opacity);
     }
   },
 
-  setElementSize(e, size) {
-    e.style.width = `${size.x}px`;
-    e.style.height = `${size.y}px`;
+  setElementSize: function (e, size) {
+    e.style.width = size.x + 'px';
+    e.style.height = size.y + 'px';
   },
 
-  _initMutantContainer() {
+  _initMutantContainer: function () {
     if (!this._mutantContainer) {
-      this._mutantContainer = L.DomUtil.create("div", "leaflet-google-mutant leaflet-top leaflet-left");
-      this._mutantContainer.id = `_MutantContainer_${L.Util.stamp(this._mutantContainer)}`;
+      this._mutantContainer = L.DomUtil.create('div', 'leaflet-google-mutant leaflet-top leaflet-left');
+      this._mutantContainer.id = '_MutantContainer_' + L.Util.stamp(this._mutantContainer);
       // 			this._mutantContainer.style.zIndex = 'auto';
-      this._mutantContainer.style.pointerEvents = "none";
+      this._mutantContainer.style.pointerEvents = 'none';
 
       this._map.getContainer().appendChild(this._mutantContainer);
     }
@@ -129,11 +135,11 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
     this._attachObserver(this._mutantContainer);
   },
 
-  _initMutant() {
+  _initMutant: function () {
     if (!this._ready || !this._mutantContainer) return;
     this._mutantCenter = new google.maps.LatLng(0, 0);
 
-    const map = new google.maps.Map(this._mutantContainer, {
+    var map = new google.maps.Map(this._mutantContainer, {
       center: this._mutantCenter,
       zoom: 0,
       tilt: 0,
@@ -145,40 +151,40 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
       scrollwheel: false,
       streetViewControl: false,
       styles: this.options.styles || {},
-      backgroundColor: "transparent",
+      backgroundColor: 'transparent'
     });
 
     this._mutant = map;
 
     // 🍂event spawned
     // Fired when the mutant has been created.
-    this.fire("spawned", {
-      mapObject: map,
+    this.fire('spawned', {
+      mapObject: map
     });
   },
 
   _attachObserver: function _attachObserver(node) {
     // 		console.log('Gonna observe', node);
 
-    const observer = new MutationObserver(this._onMutations.bind(this));
+    var observer = new MutationObserver(this._onMutations.bind(this));
 
     // pass in the target node, as well as the observer options
     observer.observe(node, {
       childList: true,
-      subtree: true,
+      subtree: true
     });
   },
 
   _onMutations: function _onMutations(mutations) {
-    for (let i = 0; i < mutations.length; ++i) {
-      const mutation = mutations[i];
-      for (let j = 0; j < mutation.addedNodes.length; ++j) {
-        const node = mutation.addedNodes[j];
+    for (var i = 0; i < mutations.length; ++i) {
+      var mutation = mutations[i];
+      for (var j = 0; j < mutation.addedNodes.length; ++j) {
+        var node = mutation.addedNodes[j];
 
         if (node instanceof HTMLImageElement) {
           this._onMutatedImage(node);
         } else if (node instanceof HTMLElement) {
-          Array.prototype.forEach.call(node.querySelectorAll("img"), this._onMutatedImage.bind(this));
+          Array.prototype.forEach.call(node.querySelectorAll('img'), this._onMutatedImage.bind(this));
         }
       }
     }
@@ -201,16 +207,15 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
     // 			console.log('caught mutated image: ', imgNode.src);
     // 		}
 
-    let coords;
-    let match = imgNode.src.match(this._roadRegexp);
-    let sublayer,
-      parent;
+    var coords;
+    var match = imgNode.src.match(this._roadRegexp);
+    var sublayer, parent;
 
     if (match) {
       coords = {
         z: match[1],
         x: match[2],
-        y: match[3],
+        y: match[3]
       };
       if (this._imagesPerTile > 1) {
         imgNode.style.zIndex = 1;
@@ -222,7 +227,7 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
         coords = {
           x: match[1],
           y: match[2],
-          z: match[3],
+          z: match[3]
         };
       }
       // 			imgNode.style.zIndex = 0;
@@ -230,10 +235,10 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
     }
 
     if (coords) {
-      let key = this._tileCoordsToKey(coords);
-      imgNode.style.position = "absolute";
+      var key = this._tileCoordsToKey(coords);
+      imgNode.style.position = 'absolute';
       if (this._imagesPerTile > 1) {
-        key += `/${sublayer}`;
+        key += '/' + sublayer;
       }
       if (key in this._tileCallbacks && this._tileCallbacks[key]) {
         // console.log('Fullfilling callback ', key);
@@ -261,53 +266,54 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
         // Remove the image, but don't store it anywhere.
         // Image needs to be replaced instead of removed, as the container
         // seems to be reused.
-        imgNode.parentNode.replaceChild(L.DomUtil.create("img"), imgNode);
+        imgNode.parentNode.replaceChild(L.DomUtil.create('img'), imgNode);
       }
     }
   },
 
   // This will be used as this.createTile for 'roadmap', 'sat', 'terrain'
   _createSingleTile: function createTile(coords, done) {
-    const key = this._tileCoordsToKey(coords);
+    var key = this._tileCoordsToKey(coords);
     // console.log('Need:', key);
 
     if (key in this._freshTiles) {
-      const tile = this._freshTiles[key].pop();
+      var tile = this._freshTiles[key].pop();
       if (!this._freshTiles[key].length) {
         delete this._freshTiles[key];
       }
       L.Util.requestAnimFrame(done);
       // 			console.log('Got ', key, ' from _freshTiles');
       return tile;
-    }
-    const tileContainer = L.DomUtil.create("div");
-    this._tileCallbacks[key] = this._tileCallbacks[key] || [];
-    this._tileCallbacks[key].push((function(c /* , k*/) {
-      return function(imgNode) {
-        const parent = imgNode.parentNode;
-        if (parent) {
-          parent.removeChild(imgNode);
-          parent.removeChild = L.Util.falseFn;
+    } else {
+      var tileContainer = L.DomUtil.create('div');
+      this._tileCallbacks[key] = this._tileCallbacks[key] || [];
+      this._tileCallbacks[key].push((function (c /*, k*/ ) {
+        return function (imgNode) {
+          var parent = imgNode.parentNode;
+          if (parent) {
+            parent.removeChild(imgNode);
+            parent.removeChild = L.Util.falseFn;
             // 						imgNode.parentNode.replaceChild(L.DomUtil.create('img'), imgNode);
-        }
-        c.appendChild(imgNode);
-        done();
+          }
+          c.appendChild(imgNode);
+          done();
           // 					console.log('Sent ', k, ' to _tileCallbacks');
-      };
-    })(tileContainer /* , key*/));
+        }.bind(this);
+      }.bind(this))(tileContainer /*, key*/ ));
 
-    return tileContainer;
+      return tileContainer;
+    }
   },
 
   // This will be used as this.createTile for 'hybrid'
   _createMultiTile: function createTile(coords, done) {
-    const key = this._tileCoordsToKey(coords);
+    var key = this._tileCoordsToKey(coords);
 
-    const tileContainer = L.DomUtil.create("div");
+    var tileContainer = L.DomUtil.create('div');
     tileContainer.dataset.pending = this._imagesPerTile;
 
-    for (let i = 0; i < this._imagesPerTile; i++) {
-      const key2 = `${key}/${i}`;
+    for (var i = 0; i < this._imagesPerTile; i++) {
+      var key2 = key + '/' + i;
       if (key2 in this._freshTiles) {
         tileContainer.appendChild(this._freshTiles[key2].pop());
         if (!this._freshTiles[key2].length) {
@@ -317,9 +323,9 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
         // 				console.log('Got ', key2, ' from _freshTiles');
       } else {
         this._tileCallbacks[key2] = this._tileCallbacks[key2] || [];
-        this._tileCallbacks[key2].push((function(c /* , k2*/) {
-          return function(imgNode) {
-            const parent = imgNode.parentNode;
+        this._tileCallbacks[key2].push((function (c /*, k2*/ ) {
+          return function (imgNode) {
+            var parent = imgNode.parentNode;
             if (parent) {
               parent.removeChild(imgNode);
               parent.removeChild = L.Util.falseFn;
@@ -331,8 +337,8 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
               done();
             }
             // 						console.log('Sent ', k2, ' to _tileCallbacks, still ', c.dataset.pending, ' images to go');
-          };
-        })(tileContainer /* , key2*/));
+          }.bind(this);
+        }.bind(this))(tileContainer /*, key2*/ ));
       }
     }
 
@@ -342,46 +348,47 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
     return tileContainer;
   },
 
-  _checkZoomLevels() {
-    // setting the zoom level on the Google map may result in a different zoom level than the one requested
-    // (it won't go beyond the level for which they have data).
+  _checkZoomLevels: function () {
+    //setting the zoom level on the Google map may result in a different zoom level than the one requested
+    //(it won't go beyond the level for which they have data).
     // verify and make sure the zoom levels on both Leaflet and Google maps are consistent
     if ((this._map.getZoom() !== undefined) && (this._mutant.getZoom() !== this._map.getZoom())) {
-      // zoom levels are out of sync. Set the leaflet zoom level to match the google one
+      //zoom levels are out of sync. Set the leaflet zoom level to match the google one
       this._map.setZoom(this._mutant.getZoom());
     }
   },
 
-  _reset() {
+  _reset: function () {
     this._initContainer();
   },
 
-  _update() {
+  _update: function () {
     L.GridLayer.prototype._update.call(this);
     if (!this._mutant) return;
 
-    const center = this._map.getCenter();
-    const _center = new google.maps.LatLng(center.lat, center.lng);
+    var center = this._map.getCenter();
+    var _center = new google.maps.LatLng(center.lat, center.lng);
 
     this._mutant.setCenter(_center);
-    const zoom = this._map.getZoom();
+    var zoom = this._map.getZoom();
     if (zoom !== undefined) {
       this._mutant.setZoom(Math.round(this._map.getZoom()));
     }
   },
 
-  _resize() {
-    const size = this._map.getSize();
+  _resize: function () {
+    var size = this._map.getSize();
     if (this._mutantContainer.style.width === size.x &&
-      this._mutantContainer.style.height === size.y) { return; }
+      this._mutantContainer.style.height === size.y)
+      return;
     this.setElementSize(this._mutantContainer, size);
     if (!this._mutant) return;
-    google.maps.event.trigger(this._mutant, "resize");
+    google.maps.event.trigger(this._mutant, 'resize');
   },
 
-  _handleZoomAnim() {
-    const center = this._map.getCenter();
-    const _center = new google.maps.LatLng(center.lat, center.lng);
+  _handleZoomAnim: function () {
+    var center = this._map.getCenter();
+    var _center = new google.maps.LatLng(center.lat, center.lng);
 
     this._mutant.setCenter(_center);
     this._mutant.setZoom(Math.round(this._map.getZoom()));
@@ -391,27 +398,29 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
   // this prevents a problem where Leaflet keeps a loaded tile longer than
   // GMaps, so that GMaps makes two requests but Leaflet only consumes one,
   // polluting _freshTiles with stale data.
-  _removeTile(key) {
+  _removeTile: function (key) {
     if (this._imagesPerTile > 1) {
-      for (let i = 0; i < this._imagesPerTile; i++) {
-        const key2 = `${key}/${i}`;
+      for (var i = 0; i < this._imagesPerTile; i++) {
+        var key2 = key + '/' + i;
         if (key2 in this._freshTiles) {
           delete this._freshTiles[key2];
         }
         // 				console.log('Pruned spurious hybrid _freshTiles');
       }
-    } else if (key in this._freshTiles) {
-      delete this._freshTiles[key];
+    } else {
+      if (key in this._freshTiles) {
+        delete this._freshTiles[key];
         // 				console.log('Pruned spurious _freshTiles', key);
+      }
     }
 
     return L.GridLayer.prototype._removeTile.call(this, key);
-  },
+  }
 });
 
 
 // 🍂factory gridLayer.googleMutant(options)
 // Returns a new `GridLayer.GoogleMutant` given its options
-L.gridLayer.googleMutant = function(options) {
+L.gridLayer.googleMutant = function (options) {
   return new L.GridLayer.GoogleMutant(options);
 };
