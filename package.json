@@ -1,6 +1,6 @@
 {
   "name": "react-leaflet-google-sunenergia",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "google layer as React compoment for Leaflet",
   "main": "dist/react-leaflet-google.js",
   "scripts": {
@@ -27,7 +27,8 @@
   "peerDependencies": {
     "leaflet": "^1.0.2",
     "react-leaflet": "^1.0.1",
-    "react": "^15.4.1"
+    "react": "^15.4.1",
+    "prop-types": "^15.6.0"
   },
   "devDependencies": {
     "babel-cli": "^6.8.0",
