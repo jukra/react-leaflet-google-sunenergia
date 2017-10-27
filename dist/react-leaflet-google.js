@@ -131,9 +131,9 @@
        }(_reactLeaflet.GridLayer));
 
        GoogleLayer.propTypes = {
-	  googlekey: _react.PropTypes.string.isRequired,
-	  maptype: _react.PropTypes.string,
-	  asclientid: _react.PropTypes.bool,
+	  googlekey: PropTypes.string.isRequired,
+	  maptype: PropTypes.string,
+	  asclientid: PropTypes.bool,
        };
        exports.default = GoogleLayer;
      /** */ },
